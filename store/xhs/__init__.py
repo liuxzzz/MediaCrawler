@@ -38,13 +38,14 @@ class XhsStoreFactory:
         "sqlite": XhsSqliteStoreImplement,
         "mongodb": XhsMongoStoreImplement,
         "excel": XhsExcelStoreImplement,
+        "pgsql": XhsDbStoreImplement,  # PostgreSQL uses the same DB store implementation
     }
 
     @staticmethod
     def create_store() -> AbstractStore:
         store_class = XhsStoreFactory.STORES.get(config.SAVE_DATA_OPTION)
         if not store_class:
-            raise ValueError("[XhsStoreFactory.create_store] Invalid save option only supported csv or db or json or sqlite or mongodb or excel ...")
+            raise ValueError("[XhsStoreFactory.create_store] Invalid save option only supported csv or db or json or sqlite or mongodb or excel or pgsql ...")
         return store_class()
 
 
@@ -119,6 +120,25 @@ async def update_xhs_note(note_item: Dict):
         "source_keyword": source_keyword_var.get(),  # 搜索关键词
         "xsec_token": note_item.get("xsec_token"),  # xsec_token
     }
+    # 检查点赞数过滤条件
+    from var import min_star_count_var
+    min_star_count = min_star_count_var.get()
+    liked_count = local_db_item.get("liked_count", 0)
+    
+    # 尝试将 liked_count 转换为整数进行比较
+    try:
+        liked_count_int = int(liked_count) if liked_count else 0
+    except (ValueError, TypeError):
+        liked_count_int = 0
+    
+    # 如果设置了最小点赞数过滤，且当前点赞数小于阈值，则跳过存储
+    if min_star_count > 0 and liked_count_int < min_star_count:
+        utils.logger.info(
+            f"[store.xhs.update_xhs_note] 跳过存储 - 点赞数 {liked_count_int} 小于阈值 {min_star_count}, "
+            f"note_id: {note_id}"
+        )
+        return
+    
     utils.logger.info(f"[store.xhs.update_xhs_note] xhs note: {local_db_item}")
     await XhsStoreFactory.create_store().store_content(local_db_item)
 

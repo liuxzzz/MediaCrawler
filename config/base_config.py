@@ -70,8 +70,8 @@ BROWSER_LAUNCH_TIMEOUT = 60
 # 设置为False可以保持浏览器运行，便于调试
 AUTO_CLOSE_BROWSER = True
 
-# 数据保存类型选项配置,支持五种类型：csv、db、json、sqlite、excel, 最好保存到DB，有排重的功能。
-SAVE_DATA_OPTION = "json"  # csv or db or json or sqlite or excel
+# 数据保存类型选项配置,支持六种类型：csv、db、json、sqlite、excel、pgsql, 最好保存到DB，有排重的功能。
+SAVE_DATA_OPTION = "pgsql"  # csv or db or json or sqlite or excel or pgsql
 
 # 用户浏览器缓存的浏览器文件配置
 USER_DATA_DIR = "%s_user_data_dir"  # %s will be replaced by platform name
@@ -89,7 +89,7 @@ MAX_CONCURRENCY_NUM = 1
 ENABLE_GET_MEIDAS = False
 
 # 是否开启爬评论模式, 默认开启爬评论
-ENABLE_GET_COMMENTS = True
+ENABLE_GET_COMMENTS = False
 
 # 爬取一级评论的数量控制(单视频/帖子)
 CRAWLER_MAX_COMMENTS_COUNT_SINGLENOTES = 10

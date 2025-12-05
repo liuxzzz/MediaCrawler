@@ -22,7 +22,7 @@ from sqlalchemy.orm import sessionmaker
 from contextlib import asynccontextmanager
 from .models import Base
 import config
-from config.db_config import mysql_db_config, sqlite_db_config
+from config.db_config import mysql_db_config, sqlite_db_config, pgsql_db_config
 
 # Keep a cache of engines
 _engines = {}
@@ -35,6 +35,19 @@ async def create_database_if_not_exists(db_type: str):
         engine = create_async_engine(server_url, echo=False)
         async with engine.connect() as conn:
             await conn.execute(text(f"CREATE DATABASE IF NOT EXISTS {mysql_db_config['db_name']}"))
+        await engine.dispose()
+    elif db_type == "pgsql":
+        # Connect to PostgreSQL default database to create target database
+        server_url = f"postgresql+asyncpg://{pgsql_db_config['user']}:{pgsql_db_config['password']}@{pgsql_db_config['host']}:{pgsql_db_config['port']}/postgres"
+        engine = create_async_engine(server_url, echo=False, isolation_level="AUTOCOMMIT")
+        async with engine.connect() as conn:
+            # Check if database exists
+            result = await conn.execute(
+                text(f"SELECT 1 FROM pg_database WHERE datname = '{pgsql_db_config['db_name']}'")
+            )
+            exists = result.fetchone()
+            if not exists:
+                await conn.execute(text(f"CREATE DATABASE {pgsql_db_config['db_name']}"))
         await engine.dispose()
 
 
@@ -52,6 +65,8 @@ def get_async_engine(db_type: str = None):
         db_url = f"sqlite+aiosqlite:///{sqlite_db_config['db_path']}"
     elif db_type == "mysql" or db_type == "db":
         db_url = f"mysql+asyncmy://{mysql_db_config['user']}:{mysql_db_config['password']}@{mysql_db_config['host']}:{mysql_db_config['port']}/{mysql_db_config['db_name']}"
+    elif db_type == "pgsql":
+        db_url = f"postgresql+asyncpg://{pgsql_db_config['user']}:{pgsql_db_config['password']}@{pgsql_db_config['host']}:{pgsql_db_config['port']}/{pgsql_db_config['db_name']}"
     else:
         raise ValueError(f"Unsupported database type: {db_type}")
 
@@ -67,7 +82,29 @@ async def create_tables(db_type: str = None):
     engine = get_async_engine(db_type)
     if engine:
         async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+            # 检查hot_article_data 是否存在，不存在创建，如果已存在，跳过创建
+            if db_type == "pgsql":
+                # 检查表是否存在
+                result = await conn.execute(
+                    text("""
+                        SELECT EXISTS (
+                            SELECT FROM information_schema.tables 
+                            WHERE table_schema = 'public' 
+                            AND table_name = 'hot_article_data'
+                        )
+                    """)
+                )
+                table_exists = result.scalar()
+                
+                if not table_exists:
+                    # 表不存在，创建表
+                    await conn.run_sync(Base.metadata.create_all)
+                else:
+                    # 表已存在，跳过创建
+                    print(f"[DB] Table 'hot_article_data' already exists, skipping creation")
+            else:
+                # 非 PostgreSQL 数据库，正常创建所有表
+                await conn.run_sync(Base.metadata.create_all)
 
 
 @asynccontextmanager

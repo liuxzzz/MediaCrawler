@@ -105,6 +105,35 @@ class XhsDbStoreImplement(AbstractStore):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    def _parse_datetime(self, value):
+        """解析各种格式的时间值为 datetime 对象"""
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, (int, float)):
+            # 处理时间戳（秒或毫秒）
+            try:
+                timestamp = float(value)
+                # 如果是毫秒时间戳（大于 1e10），转换为秒
+                if timestamp > 1e10:
+                    timestamp = timestamp / 1000
+                return datetime.fromtimestamp(timestamp)
+            except (ValueError, OSError):
+                return None
+        if isinstance(value, str):
+            # 尝试标准格式 YYYY-MM-DD HH:MM:SS
+            try:
+                return datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                try:
+                    # 尝试 ISO 格式，处理 'Z' 时区标识
+                    iso_str = value.replace('Z', '+00:00') if value.endswith('Z') else value
+                    return datetime.fromisoformat(iso_str)
+                except ValueError:
+                    return None
+        return None
+        
     async def store_content(self, content_item: Dict):
         note_id = content_item.get("note_id")
         if not note_id:
@@ -116,14 +145,12 @@ class XhsDbStoreImplement(AbstractStore):
                 await self.add_content(session, content_item)
 
     async def add_content(self, session: AsyncSession, content_item: Dict):
-        add_ts = int(get_current_timestamp())
         last_modify_ts = int(get_current_timestamp())
         note = XhsNote(
             user_id=content_item.get("user_id"),
             nickname=content_item.get("nickname"),
             avatar=content_item.get("avatar"),
             ip_location=content_item.get("ip_location"),
-            add_ts=add_ts,
             last_modify_ts=last_modify_ts,
             note_id=content_item.get("note_id"),
             type=content_item.get("type"),
@@ -140,7 +167,10 @@ class XhsDbStoreImplement(AbstractStore):
             tag_list=json.dumps(content_item.get("tag_list")),
             note_url=content_item.get("note_url"),
             source_keyword=content_item.get("source_keyword", ""),
-            xsec_token=content_item.get("xsec_token", "")
+            xsec_token=content_item.get("xsec_token", ""),
+            is_favorited=bool(content_item.get("is_favorited", 0)),
+            created_at=self._parse_datetime(content_item.get("created_at")) or datetime.now(),
+            updated_at=self._parse_datetime(content_item.get("updated_at")) or datetime.now()
         )
         session.add(note)
 
@@ -176,14 +206,12 @@ class XhsDbStoreImplement(AbstractStore):
                 await self.add_comment(session, comment_item)
 
     async def add_comment(self, session: AsyncSession, comment_item: Dict):
-        add_ts = int(get_current_timestamp())
         last_modify_ts = int(get_current_timestamp())
         comment = XhsNoteComment(
             user_id=comment_item.get("user_id"),
             nickname=comment_item.get("nickname"),
             avatar=comment_item.get("avatar"),
             ip_location=comment_item.get("ip_location"),
-            add_ts=add_ts,
             last_modify_ts=last_modify_ts,
             comment_id=comment_item.get("comment_id"),
             create_time=comment_item.get("create_time"),
@@ -223,14 +251,12 @@ class XhsDbStoreImplement(AbstractStore):
                 await self.add_creator(session, creator_item)
 
     async def add_creator(self, session: AsyncSession, creator_item: Dict):
-        add_ts = int(get_current_timestamp())
         last_modify_ts = int(get_current_timestamp())
         creator = XhsCreator(
             user_id=creator_item.get("user_id"),
             nickname=creator_item.get("nickname"),
             avatar=creator_item.get("avatar"),
             ip_location=creator_item.get("ip_location"),
-            add_ts=add_ts,
             last_modify_ts=last_modify_ts,
             desc=creator_item.get("desc"),
             gender=creator_item.get("gender"),

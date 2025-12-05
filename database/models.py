@@ -16,7 +16,7 @@
 # 详细许可条款请参阅项目根目录下的LICENSE文件。
 # 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
 
-from sqlalchemy import create_engine, Column, Integer, Text, String, BigInteger
+from sqlalchemy import create_engine, Column, Integer, Text, String, BigInteger, Boolean, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -283,13 +283,12 @@ class XhsCreator(Base):
     tag_list = Column(Text)
 
 class XhsNote(Base):
-    __tablename__ = 'xhs_note'
+    __tablename__ = 'hot_article_data'
     id = Column(Integer, primary_key=True)
     user_id = Column(String(255))
     nickname = Column(Text)
     avatar = Column(Text)
     ip_location = Column(Text)
-    add_ts = Column(BigInteger)
     last_modify_ts = Column(BigInteger)
     note_id = Column(String(255), index=True)
     type = Column(Text)
@@ -307,6 +306,9 @@ class XhsNote(Base):
     note_url = Column(Text)
     source_keyword = Column(Text, default='')
     xsec_token = Column(Text)
+    is_favorited = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=None)
+    updated_at = Column(DateTime, default=None)
 
 class XhsNoteComment(Base):
     __tablename__ = 'xhs_note_comment'

@@ -67,3 +67,18 @@ mongodb_config = {
     "password": MONGODB_PWD,
     "db_name": MONGODB_DB_NAME,
 }
+
+# postgresql config
+POSTGRES_DB_HOST = os.getenv("POSTGRES_DB_HOST", "localhost")
+POSTGRES_DB_PORT = os.getenv("POSTGRES_DB_PORT", 5432)
+POSTGRES_DB_NAME = os.getenv("POSTGRES_DB_NAME", "my-postgres")  # 与 server 项目共享同一数据库
+POSTGRES_DB_USER = os.getenv("POSTGRES_DB_USER", "root")
+POSTGRES_DB_PWD = os.getenv("POSTGRES_DB_PWD", "110805")
+
+pgsql_db_config = {
+    "host": POSTGRES_DB_HOST,
+    "port": POSTGRES_DB_PORT,
+    "db_name": POSTGRES_DB_NAME,
+    "user": POSTGRES_DB_USER,
+    "password": POSTGRES_DB_PWD,
+}
